@@ -37,7 +37,8 @@ let config = {
         	{ test: /\.woff$/, loader: 'url-loader?mimetype=application/font-woff&name=[path][name].[ext]?[hash]' },
         	{ test: /\.woff2$/, loader: 'url-loader?mimetype=application/font-woff2&name=[path][name].[ext]?[hash]' },
         	{ test: /\.eot$/, loader: 'url-loader?mimetype=application/vnd.ms-fontobject&name=[path][name].[ext]?[hash]' },
-        	{ test: /\.[ot]tf$/, loader: 'url-loader?mimetype=application/octet-stream&name=[path][name].[ext]?[hash]' },
+			{ test: /\.[ot]tf$/, loader: 'url-loader?mimetype=application/octet-stream&name=[path][name].[ext]?[hash]' },
+			{ test: /\.svg$/, loader: 'react-svg-loader'},
         ],
 	}
 	

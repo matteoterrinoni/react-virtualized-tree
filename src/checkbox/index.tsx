@@ -4,30 +4,28 @@ import "./style.scss"
 
 import C, {
 	Props,
-	getCheckboxClassName
+	getCheckboxClassName,
+	Status	
 } from './model'
 
-export {
-	Props
-} from './model'
-
-import Icon from 'src/icon'
+import StatusIcon from './status'
 
 export default (p:Props) => {
 
-	const {onChange, children, checked, className, disabled} = p;
+	const {onChange, checked, className, status} = p;
 
 	return (
 		<div className={`field form-group ${C.classNames.checkboxWrapper} ${className ? className : ''}`}>
 			<div
 				className={getCheckboxClassName(p)}
-				onClick={()=>onChange(!checked)}>
+				onClick={onChange}>
 
-				<Icon type={C.classNames.checkboxUnchecked} name="check_box_outline_blank" />
-				<Icon type={C.classNames.checkboxChecked} name="check_box" />
-				
-				<span className="children">{children}</span>
-			
+				<StatusIcon className={C.classNames.self} status={checked?Status.checked:Status.unchecked} />
+				{
+					status!=undefined &&
+					<StatusIcon className={C.classNames.children} status={status} />
+				}
+							
 			</div>
 		</div>
 	)

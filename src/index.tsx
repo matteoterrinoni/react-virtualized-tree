@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 
 import {
 	merge, deepCopy
@@ -14,198 +14,220 @@ import {
 import CP, {
 	Item,
 	Given,
-	table,
-	Column,
-	Sort,
-	sortTypes
+	RowsMap,
+	RowItem,
+	clickToCheckModes
 } from './model';
-
-export type VTableProps<T> = {
-  items:Item<T>[]
-  rowRenderer?
-  height?:number
-  rowHeight?:number,
-  columns:Column<T>[],
-  noHead?:boolean,
-  defaultSorting?: Sort,
-  scrollElement?
-  stickyHead?
-  stickyOffset?
-}
-
-export type VTableState<T> = {
-  loading:boolean,
-  sortedItems:Item<T>[]
-  sorting: Sort,
-  container
-}
 
 import RowElement from 'src/row'
 
-import Head from 'src/head'
-
 import './style.scss'
+import { EventEmitter } from 'events';
 
-export class VTable<T> extends React.Component<VTableProps<T>, VTableState<T>>{
-	
-	wrapper
-	constructor(p:VTableProps<T>){
+export type Props<T> = {
+	tree:Item<T>[]
+	rowRenderer?
+	height?:number
+	rowHeight?:number
+	shiftLength?:number
+	toggleExpandAll?:boolean
+	onToggleExpandAllEnd?:Function,
+	hideToggleButton?:boolean,
+	id?:string,
+	scrollElement?
+}
+
+type State<T> = {
+	loading:boolean,
+	rows:RowItem<T>[],
+	expanded: RowsMap<T>,
+	selected: RowsMap<T>
+}
+
+export class VTree<T> extends React.Component<Props<T>, State<T>>{
+	_list
+	constructor(p:Props<T>){
 		super(p)
 
-		let sorting = table(this).getDefaultSorting()
-		
 		this.state = {
-			loading: false,
-			sortedItems:table(this).getSortedItems(sorting),
-			sorting,
-			container:null
+			loading: true,
+			rows: [],
+			expanded: {},
+			selected: {}
 		}
 
 		this.rowRenderer = this.rowRenderer.bind(this);
-		this.sortColumn = this.sortColumn.bind(this);
-		this.wrapper = React.createRef();
-	}
+		this.load = this.load.bind(this);
+		this.toggleExpand = this.toggleExpand.bind(this);
+		this.toggleSelect = this.toggleSelect.bind(this);
 
-	componentWillReceiveProps(n:VTableProps<T>){
-		this.load(n)
-	}
-
-	load(p:VTableProps<T>, _sorting?){
-		let sorting = _sorting || table(this).getDefaultSorting();
-		this.setState(merge(this.state, {
-			sortedItems:Given.items(p.items).sort(sorting, p.columns).result,
-			sorting
-		}), ()=>this.updateList())
+		this._list = React.createRef();
 	}
 
 	updateList(){
-		this._list && this._list.recomputeRowHeights() && this._list.forceUpdate() && this._list.forceUpdateGrid();
+		this._list && this._list.current && this._list.current.recomputeRowHeights() && this._list.current.forceUpdate();
 	}
 
-	sortColumn(c:Column<T>){
-		const {sorting} = this.state
-		Given.column(c).sort(sorting)
-		this.load(this.props, sorting)
+	componentWillMount(){
+		this.load()
 	}
 
-	rowRenderer (a, visibles){
-		const {rowRenderer, rowHeight, columns, noHead, items} = this.props
-		const {sortedItems} = this.state
-		const item = visibles[a.index];
+	componentWillReceiveProps(n:Props<T>){
+		this.load(n, this.shouldToggleExpandAll(this.props, n))
+	}
 
+	shouldToggleExpandAll(o:Props<T>, n:Props<T>){
+		return (n.toggleExpandAll != undefined && o.toggleExpandAll !== n.toggleExpandAll) ? n.toggleExpandAll : undefined
+	}
+
+	load(_p?:Props<T>, toggleExpandAll?){
+        const p = _p || this.props;
+
+        const asyncAction = () => {
+        	const s = this.state;
+        	const p = this.props;
+        	
+        	let expanded = s.expanded
+        	if(toggleExpandAll!=undefined){
+        		if(toggleExpandAll){
+        			Given.items(p.tree).expandAll(expanded)
+        		}else{
+        			Given.items(p.tree).collapseAll(expanded)
+        		}
+        	}
+        	
+        	if(p.tree.length == 1){
+        		expanded[p.tree[0].id] = p.tree[0]
+        	}
+
+            const promise = new Promise(function(this, resolve, reject){
+            	let map = {}
+                const state = {
+            		rows: Given.items(p.tree).getRows(s.expanded),
+            		loading: false,
+            		expanded
+            	}                
+                resolve(state);
+            })
+
+            return promise;
+        }
+
+        return asyncAction().then(result => {
+            this.setState(result, ()=>this.updateList())
+        })
+    }
+
+    toggleExpand(item:RowItem<T>, index:number){
+    	const expanded = deepCopy(this.state.expanded)
+    	const rows = deepCopy(this.state.rows)
+    	if(expanded[item.item.id]){
+    		delete expanded[item.item.id]
+    		Given.rows(rows).collapseItem(item, index, expanded)
+    	}else{
+    		expanded[item.item.id] = item.item
+    		Given.rows(rows).expandItem(item, index, expanded)
+    	}
+    	this.setState({
+    		expanded,
+    		rows
+    	}, ()=>this.updateList())
+	}
+	
+	toggleSelect(item:RowItem<T>, e, state?){
+		const selected = deepCopy(this.state.selected)
+    	Given.item(item.item).toggleSelect(selected, state || clickToCheckModes(e))
+    	this.setState({
+    		selected,
+    	}, ()=>this.updateList())
+    }
+
+	rowRenderer (a){
+		const {rowRenderer, rowHeight, shiftLength, hideToggleButton, tree} = this.props
+		const {expanded, selected, rows} = this.state
+		const item = rows[a.index];
+		const next = rows[a.index+1];
+		const g = Given.item(item.item)
 		return (
-			<div className={CP.classNames.rowIndex(a.index)} style={a.style} key={a.key}>
+			<div style={a.style} key={a.key}>
 				<RowElement
-				columns={columns}
+				shiftLength={shiftLength}
 				height={rowHeight}
 				onRender={rowRenderer}
+				expanded={g.isExpanded(expanded)}
+				onToggleExpand={()=>this.toggleExpand(item, a.index)}
+				selected={g.isSelected(selected)}
+				status={g.status(selected)}
+				onToggleSelect={(e, state)=>this.toggleSelect(item, e, state)}
+				last={!next || next.level!=item.level}
+				hideToggleButton={hideToggleButton}
 				item={item}/>
 			</div>
 		)
 	}
 
 	_windowScroller
+	_container
 	_setRef = windowScroller => {
 		this._windowScroller = windowScroller;
 	};
 
-	_list
-	_setListRef = list => {
-		this._list = list;
-	};
-
-	length(visibles){
-		const p = this.props
-		const length =  visibles.length || 0
-		return length
-	}
-
-	head(t:VTable<T>){
-		const p = t.props
-		const s = t.state
-
-		return <Head
-			scrollElement={table(t).getHeadScrollElement()}
-			columns={p.columns}
-			sorting={s.sorting}
-			onSortColumn={t.sortColumn}
-			height={table(t).getRowHeight()}
-			stickyHead={p.stickyHead}
-			stickyHeadOffset={p.stickyOffset}
-			bottomContainer={t.wrapper.current}
-			/>
-	}
-
 	render(){
-		const {loading, sorting, sortedItems} = this.state;
+		const {loading, rows} = this.state;
 		const p = this.props
-		const s = this.state
 
-		const rowHeight = table(this).getRowHeight()
-		const visibles = Given.items(sortedItems).visibles()
-		const scrollElement = table(this).getScrollElement()
-		const height = table(this).getHeight()
+		const rowHeight = p.rowHeight || CP.list.row_height
+
+		const scrollElement = ()=>p.scrollElement ? p.scrollElement : (p.height ? this._container : window)
 
 		return loading ? <span>loading...</span> :
 		(
-			<div ref={this.wrapper}>
-				{
-					table(this).shouldRenderHeadOutiseOfContainer() &&
-					this.head(this)
-				}
-				<div
-					style={CP.defaultContainerStyle(height)}
-					className={CP.classNames.container}
-					ref={(e)=>table(this).setContainer(e)}>
-
-					{
-						table(this).shouldRenderHeadInsideOfContainer() &&
-						this.head(this)
-					}
-
-					{
-						s.container &&
-						<WindowScroller
-						ref={this._setRef}
-						scrollElement={scrollElement}>
-						{({height, isScrolling, registerChild, onChildScroll, scrollTop}) => (
-							<div className={CP.classNames.wrapper}>
-							<div className={CP.classNames.main}>
-							<List
-							autoHeight
-							isScrolling={isScrolling}
-							onScroll={onChildScroll}
-							scrollTop={scrollTop}
-							ref={this._setListRef}
-							recomputeRowHeights={false}
-							forceUpdate={false}
-							height={height}
-							overscanRowCount={20}
-							rowHeight={rowHeight}
-							rowRenderer={a=>this.rowRenderer(a, visibles)}
-							rowCount={this.length(visibles)}
-							width={CP.list.width}
-							/>
-							</div>
-							</div>
-							)}
-						</WindowScroller>
-					}
-					
-	        	</div>
+			<div
+				style={{height:p.height||'auto'}}
+				className="virtualized-tree-container"
+				ref={(e)=>this._container = e}>
+				<WindowScroller
+				ref={this._setRef}
+				scrollElement={scrollElement()}>
+				{({height, isScrolling, registerChild, onChildScroll, scrollTop}) => (
+					<div className="virtualized-tree-wrapper">
+					<div className="virtualized-tree">
+					<List
+					autoHeight
+					isScrolling={isScrolling}
+					onScroll={onChildScroll}
+					scrollTop={scrollTop}
+					ref={this._list}
+					recomputeRowHeights={false}
+					forceUpdate={false}
+					height={height}
+					overscanRowCount={1}
+					rowHeight={rowHeight}
+					rowRenderer={this.rowRenderer}
+					rowCount={rows && rows.length || 0}
+					width={CP.list.width}
+					/>
+					</div>
+					</div>
+					)}
+				</WindowScroller>
         	</div>
         )
 	}
 }
 
-export default VTable
+export default VTree
 
 export { 
-	Item as VTableItem,
-	Given as GivenVTable,
-	Column as VTableColumn,
-} from 'src/model'
+	Item as VTreeItem,
+	RowItem as VTreeRowItem,
+	Given as GivenVTree
+} from './model'
+
+export { 
+	default as FilteredVTree
+} from './filtered'
 
 export {
-	RenderItemProps as VTableRenderItemProps
-} from 'src/row'
+	RenderItemProps as VTreeRenderItemProps
+} from './row'

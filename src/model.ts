@@ -1,255 +1,257 @@
-import { merge, deepCopy, orderBy, textComparison } from './helpers'
+import { merge, deepCopy } from 'src/helpers'
 
-import SF from 'src/searchfield/model'
+const list_row_height = 32
+const codepicker_height = 250
+const codepicker_width = 250
+const padding_left = 15
 
-import I from 'src/icon/model'
+export enum CheckboxStatus {
+  unchecked,
+  checked,
+  indeterminate
+}
 
-import C from 'src/checkbox/model'
-
-import { VTable } from 'src'
-
-const listRowHeight = 50
-const codepickerHeight = 250
-const codepickerWidth = 250
-const paddingLeft = 15
-
-const BASE_NAME = 'virtualized-table'
+export enum CheckModes {
+  none,
+  all,
+  self,
+  children,
+  addSelectionSelf,
+  addSelectionChildren,
+  removeSelectionSelf,
+  removeSelectionChildren
+}
 
 export type Item<T> = T & {
+  id: string //unique across all nodes
+  code: string //not unique
+  children: Item<T>[]
   visible?: boolean
-  checked?: boolean
 }
 
-export type Column<T> = {
-  title?: any
-  name: string
-  render: Render<T>
-  fn?
-  width?
-  className?
-  isActionsCol?: boolean
-  onClick?
-  style?
+export type RowItem<T> = T & {
+  item: Item<T>
+  level?: number
 }
 
-const asc = 'asc'
-const desc = 'desc'
+export type RowsMap<T> = { [key: string]: Item<T> }
 
-export const sortTypes = {
-  asc: {
-    key: asc,
-    title: 'Asc',
-    icon: 'arrow_drop_up'
-  },
-  desc: {
-    key: desc,
-    title: 'Desc',
-    icon: 'arrow_drop_down'
-  }
-}
+export type Counter = { items: number }
 
-export type Sort = { [key: string]: string }
+export type Stringifier<T> = ((i: Item<T>) => string)
 
-export type Render<T> = (value, item: Item<T>, x?) => any
-
-export type Counter = {
-  visible: number
-  checked: number
-}
-
-export const initCounter = () => ({
-  visible: 0,
-  checked: 0
-})
-
-const getList = <T>(_items: Item<T>[], filter: string, matcher, counter: Counter) => {
-  const match = <T>(i: Item<T>) =>
-    (matcher ? matcher() : JSON.stringify(i).toLowerCase()).indexOf(filter) > -1
-  _items.forEach((it, i) => {
-    if (filter ? match(it) : true) {
-      counter.visible++
-      _items[i].visible = true
-    } else {
-      _items[i].visible = false
-    }
-    if (isChecked(it)) {
-      counter.checked++
-    }
-  })
-}
-
-const sortItems = <T>(items: Item<T>[], sorting: Sort, columns: Column<T>[]) => {
-  let _items = items
-  givenColumns(columns)
-    .sortables(sorting)
-    .forEach(s => {
-      const name = givenColumn(s).name()
-      _items.sort((a, b) => s.fn(a[name] || a, b[name] || b))
-      if (givenColumn(s).getSort(sorting) === desc) {
-        _items = _items.reverse()
-      }
+export const expandItem = <T>(
+  items: RowItem<T>[],
+  item: RowItem<T>,
+  index: number,
+  expanded: RowsMap<T>
+) => {
+  Given.items(item.item.children)
+    .getRows(expanded, item.level)
+    .filter(r => isVisible(r.item))
+    .map((r, i) => {
+      items.splice(index + i + 1, 0, r)
     })
-  return givenItems(_items)
 }
 
-const sortColumn = <T>(c: Column<T>, sorting: Sort) => {
-  let sort = givenColumn(c).getSort(sorting)
-  sorting[c.name] = sort === asc ? desc : asc
-  if (sort === desc) {
-    delete sorting[c.name]
+const expandAllItems = <T>(items: Item<T>[], expanded) =>
+  items.forEach(i => {
+    expanded[i.id] = i
+    i.children && expandAllItems(i.children, expanded)
+  })
+
+const collapseAllItems = (expanded: Object) => {
+  for (var k in expanded) {
+    expanded[k] = false
   }
 }
 
-const getDefaultSorting = <T>(columns: Column<T>[]) => {
-  let sorting = {}
-  columns.some(c => {
-    if (isSortable(c)) {
-      sortColumn(c, sorting)
-      return true
+export const collapseItem = <T>(
+  items: RowItem<T>[],
+  item: RowItem<T>,
+  index: number,
+  expanded: RowsMap<T>
+) => {
+  items.splice(index + 1, givenItem(item.item).getAllVisibleChildrenLength(expanded))
+}
+
+export const toggleSelectItem = <T>(item: Item<T>, selected: RowsMap<T>, state?: CheckModes) => {
+  const g = givenItem(item)
+
+  switch (state) {
+    case CheckModes.all:
+      g.select(selected)
+      g.selectDeep(selected)
+      break
+    case CheckModes.self:
+      g.deselectDeep(selected)
+      g.select(selected)
+      break
+    case CheckModes.children:
+      g.selectDeep(selected)
+      g.deselect(selected)
+      break
+    case CheckModes.addSelectionSelf:
+      g.select(selected)
+      break
+    case CheckModes.addSelectionChildren:
+      g.selectDeep(selected)
+      break
+    case CheckModes.removeSelectionSelf:
+      g.deselect(selected)
+      break
+    case CheckModes.removeSelectionChildren:
+      g.deselectDeep(selected)
+      break
+    case CheckModes.none:
+      g.deselect(selected)
+      g.deselectDeep(selected)
+      break
+    default:
+      g.isSelected(selected)
+        ? g.deselect(selected) && g.deselectDeep(selected)
+        : g.select(selected) && g.selectDeep(selected)
+      break
+  }
+}
+
+export const getItemStatus = <T>(item: Item<T>, selected: RowsMap<T>) => {
+  if (item.children.length == 0) {
+    return undefined
+  }
+  var childToggle = givenItem(item.children[0]).isSelected(selected)
+  var partialState = false
+  partialState = givenItem(item).isPartiallySelected(selected, childToggle)
+
+  return partialState
+    ? CheckboxStatus.indeterminate
+    : childToggle
+      ? CheckboxStatus.checked
+      : CheckboxStatus.unchecked
+}
+
+export const getRows = <T>(items: Item<T>[], expanded: RowsMap<T>, level?: number) => {
+  let _l = level !== undefined && level >= 0 ? level + 1 : 0
+  let rows: RowItem<T>[] = []
+  items.forEach((i, l) => {
+    const _k = i.id
+    isVisible(i) && rows.push(itemToRow(i, _l))
+    if (expanded[_k] && !isLeaf(i)) {
+      rows = rows.concat(getRows(i.children, expanded, _l))
     }
-    return false
   })
-  return sorting
+  return rows
 }
 
-export const getColumnStyle = <T>(c: Column<T>) => {
-  let style = c.style || {}
-  if (c.width) style['maxWidth'] = c.width
-  return style
+export const itemToRow = <T>(i: Item<T>, l: number) => {
+  return {
+    item: i,
+    level: l
+  } as RowItem<T>
 }
 
-const isVisible = <T>(i: Item<T>) => (i.visible ? true : false)
-const isChecked = <T>(i: Item<T>) => (i.checked ? true : false)
-const clean = <T>(i: Item<T>) => {
-  i.checked && delete i.checked
-  i.visible && delete i.visible
-  return i
+export const clickToCheckModes = e => {
+  if (e.shiftKey && e.altKey) {
+    return CheckModes.children
+  }
+  if (e.shiftKey) {
+    return CheckModes.self
+  }
+  return undefined
 }
 
-const isSortable = <T>(c: Column<T>, sorting?: Sort) =>
-  c.fn && (sorting ? givenColumn(c).getSort(sorting) : true)
+const isVisible = i => i.visible == undefined || i.visible
+const isLeaf = i => !i.children || i.children.length == 0
+
+const filterTree = <T>(
+  _items: Item<T>[],
+  filter: string,
+  stringifier: Stringifier<T>,
+  counter: Counter
+) => {
+  const _filterTree = <T>(_i: Item<T>) => {
+    return (_i.visible =
+      ((_i && _i.children && _i.children.filter(c => _filterTree(c)).length > 0) || match(_i)) &&
+      counter.items++ >= 0
+        ? true
+        : false)
+  }
+  const match = <T>(i) => stringifier(i).indexOf(filter) > -1
+  _items.forEach(i => i && _filterTree(i))
+}
 
 export const givenItems = <T>(items: Item<T>[]) => ({
-  filter: (filter, matcher, counter) => getList(items, filter || '', matcher, counter),
-  visibles: () => items.filter(isVisible),
-  sort: (sorting: Sort, columns: Column<T>[]) => sortItems(items, sorting, columns),
-  toggleCheck: val => items.map(i => givenItem(i).toggleCheck(val)),
-  toggleCheckItem: (_i: Item<T>) =>
-    givenItem((items as any).find(i => givenItem(i).equal(_i))).toggleCheck(),
-  filterChecked: () => givenItems(items.filter(i => isChecked(i))),
-  clean: () => givenItems(items.map(i => clean(i))),
-  result: items
+  getRows: (expanded: RowsMap<T>, level?: number) => getRows(items, expanded, level),
+  filter: (filter: string, stringifier, counter) =>
+    filterTree(items, filter || '', stringifier, counter),
+  expandAll: expanded => expandAllItems(items, expanded),
+  collapseAll: expanded => collapseAllItems(expanded)
 })
+
+export const givenRows = <T>(items: RowItem<T>[]) => ({
+  expandItem: (item: RowItem<T>, index: number, expanded: RowsMap<T>) =>
+    expandItem(items, item, index, expanded),
+  collapseItem: (item: RowItem<T>, index: number, expanded: RowsMap<T>) =>
+    collapseItem(items, item, index, expanded)
+})
+
+const isItemSelected = <T>(i: Item<T>, selected: RowsMap<T>) => (selected[i.code] ? true : false)
+const isItemPartiallySelected = <T>(i: Item<T>, selected: RowsMap<T>, toggle: boolean) =>
+  i.children.length > 0
+    ? i.children.find(_i => isItemPartiallySelected(_i, selected, toggle))
+    : isItemSelected(i, selected) != toggle
 
 export const givenItem = <T>(i: Item<T>) => ({
+  toggleSelect: (selected: RowsMap<T>, state?: CheckModes) => toggleSelectItem(i, selected, state),
+  isSelected: (selected: RowsMap<T>) => isItemSelected(i, selected),
+  deselect: (selected: RowsMap<T>) => delete selected[i.code],
+  select: (selected: RowsMap<T>) => (selected[i.code] = i),
+  selectDeep: (selected: RowsMap<T>) =>
+    i.children.forEach(_i => givenItem(_i).select(selected) && givenItem(_i).selectDeep(selected)),
+  deselectDeep: (selected: RowsMap<T>) =>
+    i.children.forEach(
+      _i => givenItem(_i).deselect(selected) && givenItem(_i).deselectDeep(selected)
+    ),
+  isPartiallySelected: (selected: RowsMap<T>, toggle: boolean) =>
+    isItemPartiallySelected(i, selected, toggle),
+  status: (selected: RowsMap<T>) => getItemStatus(i, selected),
+  isExpanded: (expanded: RowsMap<T>) => (expanded[i.id] ? true : false),
   visible: () => isVisible(i),
-  checked: () => isChecked(i),
-  clean: () => clean(i),
-  toggleCheck: (val?) => (i.checked = val !== undefined ? val : !i.checked),
-  equal: (_i: Item<T>) => !Object.keys(_i).find(k => i[k] !== _i[k])
+  leaf: () => isLeaf(i),
+  hasVisibleChildren: () => i.children.filter(c => givenItem(c).visible()).length > 0,
+  getAllVisibleChildrenLength: (expanded: RowsMap<T>) => {
+    let counter = 0
+    i.children &&
+      i.children.filter(c => givenItem(c).visible()).map(c => {
+        counter++
+        if (expanded[c.id]) {
+          counter += givenItem(c).getAllVisibleChildrenLength(expanded)
+        }
+      })
+    return counter
+  }
 })
-
-export const givenColumns = <T>(_columns?: Column<T>[]) => {
-  let columns = _columns || []
-  return {
-    add: (cols: Column<T>[]) => givenColumns(columns.concat(cols)),
-    addColumnFor: (key, sortable?) => givenColumns(columns).add([buildColumn(key, sortable)]),
-    addSortableColumnFor: key => givenColumns(columns).addColumnFor(key, true),
-    getDefaultSorting: () => getDefaultSorting(columns),
-    sortables: (sorting?: Sort) => columns.filter(c => isSortable(c, sorting)),
-    result: columns
-  }
-}
-
-export const buildColumn = <T>(key?, sortable?) =>
-  ({
-    name: key || '',
-    render: a => a,
-    fn: !sortable ? null : (a, b) => textComparison(a, b, o => o)
-  } as Column<T>)
-
-export const givenColumn = <T>(_c: Column<T>) => {
-  let c = _c || buildColumn()
-  return {
-    withName: (name: string) => {
-      c.name = name
-      givenColumn(c)
-    },
-    withRender: render => {
-      c.render = render
-      givenColumn(c)
-    },
-    withSortFn: fn => {
-      c.fn = fn
-      givenColumn(c)
-    },
-    isSortable: (sorting?: Sort) => isSortable(c, sorting),
-    sort: (sorting: Sort) => sortColumn(c, sorting),
-    getSort: (sorting?: Sort) => sorting && sorting[c.name],
-    name: () => c.name,
-    getStyle: () => getColumnStyle(c),
-    result: c
-  }
-}
-
-export const table = <T>(t: VTable<T>) => {
-  const p = t.props
-  const s = t.state
-  return {
-    getHeadScrollElement: () => (p.scrollElement ? p.scrollElement : window),
-    getScrollElement: () => (p.scrollElement ? p.scrollElement : p.height ? s.container : window),
-    getHeight: () =>
-      p.scrollElement
-        ? 0
-        : (p.height || 0) -
-          ((table(t).shouldRenderHeadOutiseOfContainer() && table(t).getRowHeight()) || 0),
-    getRowHeight: () => p.rowHeight || CP.list.row_height,
-    getDefaultSorting: () =>
-      (s && s.sorting) || p.defaultSorting || Given.columns(p.columns).getDefaultSorting(),
-    getSortedItems: (sorting?) =>
-      Given.items(p.items).sort(sorting || table(t).getDefaultSorting(), p.columns).result,
-    setContainer: c => s && t && !s.container && t.setState({ container: c }),
-    shouldRenderHead: () => !p.noHead,
-    shouldRenderHeadOutiseOfContainer: () =>
-      table(t).shouldRenderHead() && p.height && p.stickyHead,
-    shouldRenderHeadInsideOfContainer: () =>
-      table(t).shouldRenderHead() && !table(t).shouldRenderHeadOutiseOfContainer()
-  }
-}
 
 export const Given = {
   items: givenItems,
   item: givenItem,
-  column: givenColumn,
-  columns: givenColumns
+  rows: givenRows
 }
 
 const CP = {
   list: {
-    row_height: listRowHeight,
+    row_height: list_row_height,
     ref: 'List',
-    height: codepickerHeight,
-    width: codepickerWidth
+    height: codepicker_height,
+    width: codepicker_width
   },
   classNames: {
-    ...SF.classNames,
-    ...I.classNames,
-    ...C.classNames,
-    wrapper: `${BASE_NAME}-wrapper`,
-    main: BASE_NAME,
-    container: `${BASE_NAME}-container`,
-    head: 'list-head',
-    headColumn: 'list-head-column',
-    sortable: sortable => (sortable ? 'sortable' : ''),
-    isActionCol: isActionCol => (isActionCol ? 'action-col' : ''),
-    rowIndex: (index: number) => `list-item-index-${index}`,
-    row: 'list-item',
-    rowColumn: 'list-item-column',
-    fixed: 'fixed'
+    icon: 'material-icons',
+    searchField: 'search-field'
   },
-  defaultContainerStyle: (height?: number) => ({
-    height: height || 'auto'
-  })
+  row: {
+    padding_left: (level: number, shift?) => level * (shift || padding_left)
+  }
 }
 
 export default CP

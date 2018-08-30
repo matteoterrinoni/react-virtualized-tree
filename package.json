@@ -1,18 +1,18 @@
 {
-  "name": "react-virtualized-table",
+  "name": "react-virtualized-tree",
   "version": "0.0.0",
   "description": "",
   "keywords": [],
-  "main": "dist/react-virtualized-table.umd.js",
-  "module": "dist/react-virtualized-table.es5.js",
-  "typings": "dist/types/react-virtualized-table.d.ts",
+  "main": "dist/react-virtualized-tree.umd.js",
+  "module": "dist/react-virtualized-tree.es5.js",
+  "typings": "dist/types/react-virtualized-tree.d.ts",
   "files": [
     "dist"
   ],
   "author": "Matteo Terrinoni <matteo.terrinoni@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/matteoterrinoni/react-virtualized-table.git"
+    "url": "https://github.com/matteoterrinoni/react-virtualized-tree.git"
   },
   "license": "MIT",
   "engines": {

@@ -1,5 +1,6 @@
 export default {
   classNames: {
-    icon: 'material-icons'
+    font: 'material-icons',
+    svg: 'svg-icons'
   }
 }

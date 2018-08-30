@@ -1,218 +1,150 @@
-import React from 'react'
+import * as React from 'react'
 
-import * as Helpers from '../helpers'
-const {merge, deepCopy} = Helpers
 
-import {
-	VTable,
-	VTableProps
+import {merge, deepCopy} from 'src/helpers'
+
+import VTree, {
+	Props as VProps
 } from "src"
 
-import {
-	Column
-} from 'src/model'
+import ToggleButton from 'src/togglebutton'
 
 import SearchField from 'src/searchfield'
 
-import Checkbox from 'src/checkbox'
-
-import Head from './head'
+import Sticky from 'src/stickyWrapper'
 
 import './style.scss'
-
-import M, {
-	filtered
-} from './model'
 
 import CP, {
 	Item,
 	Given,
-	initCounter,
-	Counter
+	RowsMap,
+	Counter,
+	Stringifier
 } from 'src/model';
 
-export type Props<T> = VTableProps<T> & {
-	matcher?:Function,
+type Props<T> = VProps<T> & {
 	children?:any,
-	filter?:string
-	onChangeFilter?,
-	hideFilter?
-	selectable?
-	onChangeSelection?
-	stickyFilter?
+	stringifier: Stringifier<T>,
+	stickyOffset?
 }
 
-export type State<T> = {
+type State<T> = {
 	filter,
-	filteredList,
-	counter:Counter,
-	headRef
+	toggle,
+	filteredTree,
+	counter: Counter
 }
 
-let items
-
-export default class FilteredVirtualizedTable<T> extends React.Component<Props<T>, State<T>>{
-
-	container
+export default class FilteredVirtualizedTree<T> extends React.Component<Props<T>, State<T>>{
 	constructor(p:Props<T>){
 		super(p)
 
 		//to avoid deepCopy and passing the data by value to state
-		const list = this.getElem(p.items)
-		const counter = initCounter()
-		const filter = p.filter ? this.getElem(p.filter) : '';
-
-		this.filterTheList(list, filter, counter)
+		const tree = p.tree.slice()
+		let counter= {items:0}
+		let filter = ''
+		this.filterTheTree(tree, filter, counter)
 
 		this.state = {
 			filter,
-			filteredList:list,
-			counter,
-			headRef: null
+			toggle: false,
+			filteredTree:tree,
+			counter
 		}
 
-		this.setFilteredList = this.setFilteredList.bind(this)
-		this.filterTheList = this.filterTheList.bind(this)
+		this.setFilteredTree = this.setFilteredTree.bind(this)
+		this.filterTheTree = this.filterTheTree.bind(this)
 		this.setFilter = this.setFilter.bind(this)
-		this.toggleSelection = this.toggleSelection.bind(this)
-		this.toggleSelectionAll = this.toggleSelectionAll.bind(this)
-		this.container = React.createRef();
-	}
-
-	getElem(elem){
-		return deepCopy(elem)
+		this.setToggle = this.setToggle.bind(this)
 	}
 
 	componentWillReceiveProps(n:Props<T>){
-		if(JSON.stringify(n.items) != JSON.stringify(this.props.items)){
+		if((n.id != this.props.id) || (n.tree.length != this.props.tree.length)){
 			this.load(n)
 		}
 	}
 
-	setFilteredList(items){
+	setFilteredTree(tree){
 		this.setState(merge(this.state, {
-			filteredList: items
+			filteredTree: tree
 		}))
 	}
 
 	load(p:Props<T>){
-		this.setFilter(this.state.filter, p)
+		const tree = p.tree.slice()
+		let counter= {items:0}
+		let filter = ''
+		this.filterTheTree(tree, filter, counter)
+		this.setFilteredTree(tree)
+		this.setState({
+			filter,
+			toggle: false,
+			filteredTree:tree,
+			counter
+		})
 	}
 
-	filterTheList(items, filter?, counter?){
-		Given.items(items).filter((filter!=undefined ? filter : this.state.filter), this.props.matcher, counter || initCounter())
+	filterTheTree(tree, filter, counter:Counter){
+		Given.items(tree).filter((filter!=undefined ? filter : this.state.filter), this.props.stringifier, counter)
 	}
 
-	setFilter(_filter:string, props?:Props<T>){
-		const _props = props || this.props
-		const items = props ? this.getElem(_props.items) : this.state.filteredList
+	setFilter(_filter:string){
 		let filter = _filter.toLowerCase()
-		let counter = initCounter()
-		this.filterTheList(items, filter, counter)
-		this.setState(merge(this.state, {
-			filter: _filter,
-			filteredList: items,
+		const {tree} = this.props
+		let counter = {items:0}
+		this.filterTheTree(tree, filter, counter)
+		this.setState({
+			filter,
+			filteredTree: tree,
 			counter
-		}), ()=>{
-			_props.onChangeFilter && _props.onChangeFilter(_filter)
-			this.onChangeSelection(items, _props)
 		})
 	}
 
-	onChangeSelection(items:Item<T>[], p:Props<T>){
-		p.onChangeSelection && p.onChangeSelection(Given.items(this.getElem(items)).filterChecked().clean().result)
-	}
-
-	toggleSelection(data:Item<T>){
-		const p = this.props
-		const s = this.state
-		let counter = initCounter()
-		Given.items(s.filteredList).toggleCheckItem(data)
-		this.filterTheList(s.filteredList, this.state.filter, counter)
+	setToggle(t){
 		this.setState(merge(this.state, {
-			filteredList: s.filteredList,
-			counter
-		}), ()=>{
-			this.onChangeSelection(s.filteredList, p)
-		})
-	}
-
-	toggleSelectionAll(val){
-		const p = this.props
-		const s = this.state
-		let counter = initCounter()
-		Given.items(s.filteredList).toggleCheck(val)
-		this.filterTheList(s.filteredList, this.state.filter, counter)
-		this.setState(merge(this.state, {
-			filteredList: s.filteredList,
-			counter
-		}), ()=>{
-			this.onChangeSelection(s.filteredList, p)
-		})
-	}
-
-	selectColumn(){
-		const checkedAll = this.props.items.length > 0 && (this.state.counter.checked == this.props.items.length) ? true : false
-		return {
-			name: "select",
-			title: [
-				<Checkbox checked={checkedAll}
-				disabled={this.props.items.length == 0}
-				onChange={ (e) => this.toggleSelectionAll(!checkedAll)}/>,
-
-				<span className="badge badge-secondary">{this.state.counter.checked}</span>
-			],
-			width: 60,
-			className: M.classNames.selectionCol,
-			render: (value,data,cellProps) => (
-				<Checkbox
-				onChange={ (e) => this.toggleSelection(data) }
-				checked={ data.checked }/>
-				)	
-		} as Column<T>
+			toggle: t
+		}))
 	}
 
 	render(){
-		const s = this.state;
-		const p = this.props;
-		const {filteredList, counter} = s;
-		const {items, ..._p} = p
-		const {matcher, children, columns, selectable, stickyFilter, ...vTableProps} = _p
-
-		const _columns = selectable ?
-		[
-			this.selectColumn(),
-			...columns
-		] : columns
-
-		const filter = this.props.filter || this.state.filter
+		const {filter, toggle, filteredTree, counter} = this.state;
+		const {tree, ...p} = this.props
+		const {stringifier, children, ...vTreeProps} = this.props
 
 		return (
-			<div
-			ref={this.container}
-			className={`${M.classNames.filtered} ${M.classNames.windowScroll(vTableProps.height)}`}>
-				{
-					!p.hideFilter &&
-					<div ref={filtered(this).setHeadRef}>
-						<Head
-						stickyFilter={stickyFilter}
-						stickyFilterOffset={vTableProps.stickyOffset}
-						children={children}
-						counter={counter}
-						filter={filter}
-						onChangeFilter={this.setFilter}
-						scrollElement={vTableProps.scrollElement}
-						bottomContainer={this.container.current}/>
+			<div className={`filtered-virtualized-tree ${!vTreeProps.height?'window-scroll':''}`}>
+				<Sticky
+					offset={p.stickyOffset}
+					scrollElement={p.scrollElement}>
+
+					<div className="head">
+						<div className="filter-box">
+							<SearchField
+							value={filter}
+							onChange={this.setFilter}/>
+							{
+								<span className="badge counter">{counter && counter.items || 0}</span>
+							}
+						</div>
+						{
+							children &&
+							<div className="other-filters">
+								{children}
+							</div>
+						}
+						<div className="toggle-all-button">
+							<ToggleButton
+								onClick={()=>this.setToggle(!toggle)}
+								toggle={toggle}
+								withText={true}
+								textExpanded="Collapse All"
+								textCollapsed="Expand All"/>
+						</div>
 					</div>
-				}
-				{
-					filtered(this).showTable() &&
-					<VTable
-					{...vTableProps}
-					stickyOffset={filtered(this).getChildTableOffsetTop()}
-					columns={_columns}
-					items={filteredList} />
-				}
+					
+				</Sticky>
+				<VTree {...vTreeProps} toggleExpandAll={toggle} onToggleExpandAllEnd={()=>this.setToggle(undefined)} tree={filteredTree} />
 			</div>
 		)
 	}

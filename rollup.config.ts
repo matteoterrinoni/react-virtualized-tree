@@ -8,7 +8,7 @@ import postcss from 'rollup-plugin-postcss'
 import alias from 'rollup-plugin-alias';
 const pkg = require('./package.json')
 
-const libraryName = 'react-virtualized-table'
+const libraryName = 'react-virtualized-tree'
 
 export default {
   input: `src/${libraryName}.ts`,

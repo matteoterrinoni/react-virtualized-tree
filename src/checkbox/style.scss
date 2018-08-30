@@ -1,5 +1,6 @@
 $brand-success: #4caf50;
 $gray: #eaeaea;
+$gray-darker: #757575;
 
 .custom-checkbox {
 	position: relative;
@@ -10,8 +11,25 @@ $gray: #eaeaea;
 	-ms-user-select: none;
 	user-select: none;
 	cursor: pointer;
-	height: 25px;
+	height: 20px;
 	width: 25px;
+
+	&:before{
+		content: "";
+		background: $gray;
+		border-radius: 3px;
+		width: 20px;
+		height: 20px;
+		display: block;
+		position: absolute;
+		z-index: 0;
+	}
+
+	&:hover{
+		&:before{
+			background: darken($gray, 5%);
+		}
+	}
 
 	input {
 		display:none;
@@ -28,6 +46,11 @@ $gray: #eaeaea;
 		opacity: 0;
 	}
 
+	i.indeterminate{
+		opacity: 0;
+		color: $gray-darker;
+	}
+
 	i.unchecked{
 		opacity: 1;
 		color: $gray;
@@ -36,10 +59,30 @@ $gray: #eaeaea;
 	&.checked {
 		i.checked{
 			opacity: 1;
-
 		}
 		i.unchecked{
 			opacity: 0;
+		}
+		i.indeterminate{
+			opacity: 0;
+		}
+	}
+
+	&.indeterminate{
+		i.checked{
+			opacity: 0;
+		}
+		i.unchecked{
+			opacity: 0;
+		}
+		i.indeterminate{
+			opacity: 1;
+		}
+
+		&.checked{
+			i.indeterminate{
+				color: $brand-success;
+			}
 		}
 	}
 
@@ -54,6 +97,48 @@ $gray: #eaeaea;
 
 		.children{
 			flex: 1 0 0;
+		}
+	}
+
+	.status-check{
+		position: relative;
+
+		&.checkbox-self{
+			z-index: 2;
+			margin-left: 3px;
+		}
+
+		&.checkbox-children{
+			z-index: 1;
+			margin-left: 9px;
+		}
+
+		i{
+			fill: white;
+			stroke: white;
+			stroke-width: 1;
+			paint-order: stroke;
+			z-index: 1;
+
+			svg{
+				width: 16px;
+				height: auto;
+			}
+		}
+
+		&.checked {
+			i{
+				fill: $brand-success;
+				stroke: $brand-success;
+			}
+		}
+
+		&.indeterminate {
+			i{
+				opacity: 1;
+				fill: $gray-darker;
+				stroke: $gray-darker;
+			}
 		}
 	}
 }
