@@ -11,7 +11,7 @@ export default (p:Props) => {
     const {className, ...props} = p
 
 	return (
-		<button className={`custom-button ${p.className||''}`} {...props}>			
+		<button className={`btn btn-light custom-button ${p.className||''}`} {...props}>			
 		</button>
 	)
 }
