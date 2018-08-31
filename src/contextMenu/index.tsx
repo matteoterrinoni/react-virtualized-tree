@@ -1,9 +1,8 @@
 import * as React from 'react'
 
-import M, {
+import {
     ContextMenuProps
 } from './model'
-
 
 type Props = ContextMenuProps
 
@@ -18,11 +17,10 @@ const ContextMenu = (p:Props) => {
         <ClickOutside onClickOutside={p.onClose}>
             <ul className="context-menu">
             {
-                Object.keys(M.checkModes)
-                .map(k=>M.checkModes[k])
-                .map((cm, i)=><Item
+                p.items.map((item, i)=><Item
                     key={`contenxt-menu-item-${i}`}
-                    item={cm} {...p}/>
+                    onClose={p.onClose}
+                    item={item} />
                 )
             }
             </ul>

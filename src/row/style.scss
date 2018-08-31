@@ -1,0 +1,94 @@
+@import '~src/variables';
+
+$rows:$gray;
+
+.list-item{
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid $gray-light;
+    margin-left: 6px;
+
+    .contextmenu-wrapper{
+        position: absolute;
+        width: 100%;
+        left: 25px;
+        top: 100%;
+    }
+
+    &.last{
+        .tree-level-space:last-child{
+            &:before{
+                height: 100%;
+                border-bottom: 2px solid $rows;
+                border-bottom-left-radius: 3px;
+            }
+            &:after{
+                content: none;
+            }
+        }
+    }
+
+    .item{
+        position: relative;
+        width: 100%;
+        z-index: 1;
+        height: 100%;
+        display: flex;
+        align-items: center;
+
+        &:before{
+            content: "";
+            display: block;
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 3px;
+            background: $rows;
+            left: -47px;
+            top: calc(50% - 3px);
+            z-index: 0;
+        }
+    }
+
+    .side-checkbox{
+        flex: 1 0 0;
+    }
+    
+    .field.form-group{
+        margin-bottom: 0;
+    }
+
+    .text{
+        text-align: left;
+        flex: 2 0 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .side-button{
+        flex: 1 0 0;
+        text-align: right;
+        padding-right: 10px;
+        min-width:25px;
+        
+        button{
+            width: 24px;
+            height: 24px;
+            box-shadow: none;
+            border: none;
+            background: $rows;
+            display: flex;
+            padding: 0;
+            margin: 0;
+            align-items: center;
+            text-align: center;
+            border-radius: 12px;
+            position: absolute;
+            z-index: 2;
+            margin-top: -12px;
+            margin-left: -6px;
+            outline: 0;
+        }
+    }
+}

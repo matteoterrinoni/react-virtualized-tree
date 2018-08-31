@@ -5,17 +5,17 @@ import "./style.scss"
 import C, {
 	Props,
 	getCheckboxClassName,
-	Status	
+	CheckboxStatus as Status,
 } from './model'
 
 import StatusIcon from './status'
 
 export default (p:Props) => {
 
-	const {onChange, checked, className, status} = p;
+	const {onChange, checked, method, status} = p;
 
 	return (
-		<div className={`field form-group ${C.classNames.checkboxWrapper} ${className ? className : ''}`}>
+		<div className={`field form-group ${C.classNames.checkboxWrapper}`}>
 			<div
 				className={getCheckboxClassName(p)}
 				onClick={onChange}>

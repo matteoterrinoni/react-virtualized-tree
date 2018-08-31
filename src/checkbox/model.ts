@@ -1,12 +1,19 @@
-import { CheckboxStatus as Status } from 'src/model'
+export enum CheckboxStatus {
+  unchecked,
+  checked,
+  indeterminate
+}
 
-export { CheckboxStatus as Status } from 'src/model'
+export enum CheckboxMethods {
+  add,
+  remove
+}
 
 export type Props = {
   onChange?: any
   checked?: boolean
-  status?: Status
-  className?: string
+  status?: CheckboxStatus
+  method?: CheckboxMethods
   disabled?: boolean
 }
 
@@ -36,5 +43,5 @@ export default C
 export const getCheckboxClassName = (p: Props) => {
   return `${C.classNames.checkbox} ${p.checked ? C.classNames.checkboxChecked : ''} ${
     p.disabled ? C.classNames.checkboxDisabled : ''
-  }`
+  } ${p.method ? CheckboxMethods[p.method] : ''}`
 }

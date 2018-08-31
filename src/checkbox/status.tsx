@@ -3,7 +3,7 @@ import React from "react"
 import "./style.scss"
 
 import C, {
-    Status,
+    CheckboxStatus as Status,
 } from './model'
 
 import Icon from 'src/icon'

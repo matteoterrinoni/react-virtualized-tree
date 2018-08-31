@@ -1,26 +1,15 @@
 import { merge, deepCopy } from 'src/helpers'
 
+export * from '../checkModes/model'
+
+import { CheckboxStatus } from 'src/checkbox/model'
+
+import { CheckModes } from '../checkModes/model'
+
 const list_row_height = 32
 const codepicker_height = 250
 const codepicker_width = 250
 const padding_left = 15
-
-export enum CheckboxStatus {
-  unchecked,
-  checked,
-  indeterminate
-}
-
-export enum CheckModes {
-  none,
-  all,
-  self,
-  children,
-  addSelectionSelf,
-  addSelectionChildren,
-  removeSelectionSelf,
-  removeSelectionChildren
-}
 
 export type Item<T> = T & {
   id: string //unique across all nodes

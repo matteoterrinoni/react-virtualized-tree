@@ -16,7 +16,8 @@ import CP, {
 	Given,
 	RowsMap,
 	RowItem,
-	clickToCheckModes
+	clickToCheckModes,
+	CheckModes
 } from './model';
 
 import RowElement from 'src/row'
@@ -134,10 +135,14 @@ export class VTree<T> extends React.Component<Props<T>, State<T>>{
     	}, ()=>this.updateList())
 	}
 	
-	toggleSelect(item:RowItem<T>, e, state?){
+	toggleSelect(item:RowItem<T>, e, state?:CheckModes){
 		const selected = deepCopy(this.state.selected)
-    	Given.item(item.item).toggleSelect(selected, state || clickToCheckModes(e))
-    	this.setState({
+		const _state = state==undefined?clickToCheckModes(e):state
+		
+		Given.item(item.item)
+		.toggleSelect(selected, _state)
+		
+		this.setState({
     		selected,
     	}, ()=>this.updateList())
     }

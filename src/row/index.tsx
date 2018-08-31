@@ -9,7 +9,7 @@ import CP, {
 import Checkbox from 'src/checkbox'
 
 import {
-	Status
+	CheckboxStatus as Status
 } from 'src/checkbox/model'
 
 import TreeLevelSpaces from './treeLevelSpaces'
@@ -18,7 +18,7 @@ import ToggleButton from './toggleButton'
 
 import ItemRenderer from './item'
 
-import ContextMenu from 'src/contextMenu'
+import Menu from './menu'
 
 type Props<T> = {
 	item: RowItem<T>
@@ -44,6 +44,8 @@ export type RenderItemProps<T> = {
 	expanded:boolean,
 	onToggle:Function
 }
+
+import './style.scss'
 
 class Row<T> extends React.Component<Props<T>, State> {
     state = {
@@ -98,21 +100,21 @@ class Row<T> extends React.Component<Props<T>, State> {
                     expanded={p.expanded}/>
                 }
                 
-                <div className="selected-button">
+                <div className="select-button">
                     <Checkbox checked={p.selected} status={p.status} onChange={p.onToggleSelect}/>
                 </div>
+
+                <Menu
+                    shiftLength={p.shiftLength || 25}
+                    level={p.item.level||0}
+                    showContextMenu={s.contextMenu && canToggle}
+                    onToggleSelect={p.onToggleSelect}
+                    onToggleContextMenu={this.toggleContextMenu}/>
 
                 <ItemRenderer
                 onRender={p.onRender}
                 renderObj={renderObj}
                 id={p.item.item.id}/>
-
-                {
-                    s.contextMenu && canToggle &&
-                    <ContextMenu
-                        onClose={()=>this.toggleContextMenu(false)}
-                        onPick={(e, state)=>p.onToggleSelect(e, state)}/>
-                }
                 
             </div>
         ) : null

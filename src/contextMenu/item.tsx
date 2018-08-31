@@ -2,16 +2,18 @@ import * as React from 'react'
 
 import {
     ContextMenuProps,
-    CheckModeItem
+    ContextMenuItem
 } from './model'
 
-type Props = ContextMenuProps & {
-    item: CheckModeItem
+type Props = {
+    item: ContextMenuItem,
+    onClose
 }
 
 const Item = (p:Props) => {
     return (
-        <li className="context-menu-item" onClick={(e)=>p.onClose().then(()=>p.onPick(e, p.item.checkmode))}>
+        <li className="context-menu-item" onClick={(e)=>p.onClose().then(p.item.onClick)}>
+            <div className="context-menu-item-icon">{p.item.icon}</div>
             <div className="context-menu-item-title">{p.item.title}</div>
             <div className="context-menu-item-shortcut">{p.item.shortcut}</div>
         </li>            

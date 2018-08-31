@@ -1,0 +1,14 @@
+@import '~src/variables';
+
+.checkmode-icon{
+    display: flex;
+    align-items: center;
+
+    small {
+        font-family: monospace;
+        padding-right: 2px;
+        font-size: 15px;
+        font-weight: bold;
+        color: $gray-dark;
+    }
+}
