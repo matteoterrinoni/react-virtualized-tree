@@ -15,7 +15,7 @@ export default (p:Props) => {
 	const {onChange, checked, method, status} = p;
 
 	return (
-		<div className={`field form-group ${C.classNames.checkboxWrapper}`}>
+		<div className={`${C.classNames.checkboxWrapper}`}>
 			<div
 				className={getCheckboxClassName(p)}
 				onClick={onChange}>

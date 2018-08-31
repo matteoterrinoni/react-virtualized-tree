@@ -32,7 +32,7 @@ export type Props<T> = {
 	rowHeight?:number
 	shiftLength?:number
 	toggleExpandAll?:boolean
-	onToggleExpandAllEnd?:Function,
+	toggleSelectAll?:boolean
 	hideToggleButton?:boolean,
 	id?:string,
 	scrollElement?
@@ -74,26 +74,43 @@ export class VTree<T> extends React.Component<Props<T>, State<T>>{
 	}
 
 	componentWillReceiveProps(n:Props<T>){
-		this.load(n, this.shouldToggleExpandAll(this.props, n))
+		this.load(n,
+			this.shouldToggleExpandAll(this.props, n),
+			this.shouldToggleSelectAll(this.props, n)
+		)
 	}
 
 	shouldToggleExpandAll(o:Props<T>, n:Props<T>){
 		return (n.toggleExpandAll != undefined && o.toggleExpandAll !== n.toggleExpandAll) ? n.toggleExpandAll : undefined
 	}
 
-	load(_p?:Props<T>, toggleExpandAll?){
+	shouldToggleSelectAll(o:Props<T>, n:Props<T>){
+		return (n.toggleSelectAll != undefined && o.toggleSelectAll !== n.toggleSelectAll) ? n.toggleSelectAll : undefined
+	}
+
+	load(_p?:Props<T>, toggleExpandAll?, toggleSelectAll?){
         const p = _p || this.props;
 
         const asyncAction = () => {
         	const s = this.state;
         	const p = this.props;
         	
-        	let expanded = s.expanded
-        	if(toggleExpandAll!=undefined){
+			let expanded = s.expanded
+			let selected = s.selected
+			
+			if(toggleExpandAll!=undefined){
         		if(toggleExpandAll){
         			Given.items(p.tree).expandAll(expanded)
         		}else{
         			Given.items(p.tree).collapseAll(expanded)
+        		}
+			}
+			
+			if(toggleSelectAll!=undefined){
+        		if(toggleSelectAll){
+        			Given.items(p.tree).selectAll(selected)
+        		}else{
+        			Given.items(p.tree).deselectAll(selected)
         		}
         	}
         	
@@ -106,7 +123,8 @@ export class VTree<T> extends React.Component<Props<T>, State<T>>{
                 const state = {
             		rows: Given.items(p.tree).getRows(s.expanded),
             		loading: false,
-            		expanded
+					expanded,
+					selected
             	}                
                 resolve(state);
             })

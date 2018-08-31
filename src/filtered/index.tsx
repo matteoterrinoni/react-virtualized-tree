@@ -7,7 +7,9 @@ import VTree, {
 	Props as VProps
 } from "src"
 
-import ToggleButton from 'src/togglebutton'
+import ToggleExpandButton from 'src/toggleExpandButton'
+
+import ToggleSelectButton from 'src/toggleSelectButton'
 
 import SearchField from 'src/searchfield'
 
@@ -31,7 +33,8 @@ type Props<T> = VProps<T> & {
 
 type State<T> = {
 	filter,
-	toggle,
+	toggleExpand,
+	toggleSelect,
 	filteredTree,
 	counter: Counter
 }
@@ -48,7 +51,8 @@ export default class FilteredVirtualizedTree<T> extends React.Component<Props<T>
 
 		this.state = {
 			filter,
-			toggle: false,
+			toggleExpand: false,
+			toggleSelect: false,
 			filteredTree:tree,
 			counter
 		}
@@ -56,7 +60,8 @@ export default class FilteredVirtualizedTree<T> extends React.Component<Props<T>
 		this.setFilteredTree = this.setFilteredTree.bind(this)
 		this.filterTheTree = this.filterTheTree.bind(this)
 		this.setFilter = this.setFilter.bind(this)
-		this.setToggle = this.setToggle.bind(this)
+		this.setToggleExpand = this.setToggleExpand.bind(this)
+		this.setToggleSelect = this.setToggleSelect.bind(this)
 	}
 
 	componentWillReceiveProps(n:Props<T>){
@@ -79,7 +84,8 @@ export default class FilteredVirtualizedTree<T> extends React.Component<Props<T>
 		this.setFilteredTree(tree)
 		this.setState({
 			filter,
-			toggle: false,
+			toggleExpand: false,
+			toggleSelect: false,
 			filteredTree:tree,
 			counter
 		})
@@ -101,14 +107,20 @@ export default class FilteredVirtualizedTree<T> extends React.Component<Props<T>
 		})
 	}
 
-	setToggle(t){
+	setToggleExpand(t){
 		this.setState(merge(this.state, {
-			toggle: t
+			toggleExpand: t
+		}))
+	}
+
+	setToggleSelect(t){
+		this.setState(merge(this.state, {
+			toggleSelect: t
 		}))
 	}
 
 	render(){
-		const {filter, toggle, filteredTree, counter} = this.state;
+		const {filter, toggleExpand, toggleSelect, filteredTree, counter} = this.state;
 		const {tree, ...p} = this.props
 		const {stringifier, children, ...vTreeProps} = this.props
 
@@ -134,17 +146,27 @@ export default class FilteredVirtualizedTree<T> extends React.Component<Props<T>
 							</div>
 						}
 						<div className="toggle-all-button">
-							<ToggleButton
-								onClick={()=>this.setToggle(!toggle)}
-								toggle={toggle}
+							<ToggleExpandButton
+								onClick={()=>this.setToggleExpand(!toggleExpand)}
+								toggle={toggleExpand}
 								withText={true}
 								textExpanded="Collapse All"
 								textCollapsed="Expand All"/>
+							
+							<ToggleSelectButton
+								onClick={()=>this.setToggleSelect(!toggleSelect)}
+								toggle={toggleSelect}
+								withText={true}
+								textSelected="Deselect All"
+								textDeselected="Select All"/>
 						</div>
 					</div>
 					
 				</Sticky>
-				<VTree {...vTreeProps} toggleExpandAll={toggle} onToggleExpandAllEnd={()=>this.setToggle(undefined)} tree={filteredTree} />
+				<VTree {...vTreeProps}
+				toggleExpandAll={toggleExpand}
+				toggleSelectAll={toggleSelect}
+				tree={filteredTree} />
 			</div>
 		)
 	}

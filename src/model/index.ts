@@ -171,10 +171,18 @@ const filterTree = <T>(
 
 export const givenItems = <T>(items: Item<T>[]) => ({
   getRows: (expanded: RowsMap<T>, level?: number) => getRows(items, expanded, level),
+
   filter: (filter: string, stringifier, counter) =>
     filterTree(items, filter || '', stringifier, counter),
+
   expandAll: expanded => expandAllItems(items, expanded),
-  collapseAll: expanded => collapseAllItems(expanded)
+  collapseAll: expanded => collapseAllItems(expanded),
+
+  selectAll: (selected: RowsMap<T>) =>
+    items.forEach(i => givenItem(i).select(selected) && givenItem(i).selectDeep(selected)),
+
+  deselectAll: (selected: RowsMap<T>) =>
+    items.forEach(i => givenItem(i).deselect(selected) && givenItem(i).deselectDeep(selected))
 })
 
 export const givenRows = <T>(items: RowItem<T>[]) => ({
